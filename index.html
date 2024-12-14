@@ -1,129 +1,119 @@
-import pygame
-import random
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jumping Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        #gameCanvas {
+            display: block;
+            background-color: #87CEEB;
+            margin: 0 auto;
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+<body>
 
-# Initialize pygame
-pygame.init()
+<canvas id="gameCanvas"></canvas>
 
-# Define colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    let gravity = 0.8;
+    let jumpPower = -12;
+    let isJumping = false;
+    let player = {
+        x: 50,
+        y: canvas.height - 50,
+        width: 30,
+        height: 30,
+        velocityY: 0
+    };
+    
+    let hurdles = [];
+    let hurdleSpeed = 5;
+    
+    function createHurdle() {
+        let height = Math.random() * (canvas.height / 2) + 50;
+        hurdles.push({ x: canvas.width, y: canvas.height - height, width: 20, height: height });
+    }
 
-# Screen dimensions
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Jumping Game")
+    function drawPlayer() {
+        ctx.fillStyle = "#FF6347"; // Tomato color
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
 
-# Game variables
-player_width, player_height = 50, 50
-player_x = 100
-player_y = HEIGHT - player_height - 50
-player_vel = 0  # vertical velocity
-gravity = 1
-jump_strength = -15
-on_ground = True
+    function drawHurdles() {
+        ctx.fillStyle = "#32CD32"; // Lime color
+        for (let i = 0; i < hurdles.length; i++) {
+            ctx.fillRect(hurdles[i].x, hurdles[i].y, hurdles[i].width, hurdles[i].height);
+        }
+    }
 
-obstacle_width, obstacle_height = 50, 50
-obstacle_vel = 5
-obstacles = []
+    function updatePlayer() {
+        if (isJumping) {
+            player.velocityY += gravity;
+            player.y += player.velocityY;
+            if (player.y >= canvas.height - player.height) {
+                player.y = canvas.height - player.height;
+                isJumping = false;
+                player.velocityY = 0;
+            }
+        }
+    }
 
-# Font
-font = pygame.font.SysFont('arial', 32)
+    function updateHurdles() {
+        for (let i = 0; i < hurdles.length; i++) {
+            hurdles[i].x -= hurdleSpeed;
+        }
+        hurdles = hurdles.filter(hurdle => hurdle.x + hurdle.width > 0);
+    }
 
-# Game clock
-clock = pygame.time.Clock()
+    function checkCollisions() {
+        for (let i = 0; i < hurdles.length; i++) {
+            if (player.x + player.width > hurdles[i].x &&
+                player.x < hurdles[i].x + hurdles[i].width &&
+                player.y + player.height > hurdles[i].y) {
+                // Collision detected, reset game
+                alert('Game Over! Press OK to restart.');
+                location.reload();
+            }
+        }
+    }
 
-def create_obstacle():
-    """Generate a new obstacle at a random position."""
-    obstacle_x = WIDTH
-    obstacle_y = HEIGHT - obstacle_height - 50
-    obstacles.append(pygame.Rect(obstacle_x, obstacle_y, obstacle_width, obstacle_height))
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        updatePlayer();
+        updateHurdles();
+        checkCollisions();
+        
+        drawPlayer();
+        drawHurdles();
+        
+        requestAnimationFrame(gameLoop);
+    }
 
-def draw_player():
-    """Draw the player on the screen."""
-    pygame.draw.rect(screen, RED, (player_x, player_y, player_width, player_height))
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !isJumping) {
+            isJumping = true;
+            player.velocityY = jumpPower;
+        }
+    });
 
-def draw_obstacles():
-    """Draw all obstacles on the screen."""
-    for obs in obstacles:
-        pygame.draw.rect(screen, BLACK, obs)
+    setInterval(createHurdle, 2000); // Create a new hurdle every 2 seconds
+    gameLoop();
+</script>
 
-def move_obstacles():
-    """Move obstacles and remove those that go off-screen."""
-    global obstacles
-    for obs in obstacles:
-        obs.x -= obstacle_vel
-    obstacles = [obs for obs in obstacles if obs.x + obstacle_width > 0]
-
-def check_collision():
-    """Check for collisions between the player and obstacles."""
-    player_rect = pygame.Rect(player_x, player_y, player_width, player_height)
-    for obs in obstacles:
-        if player_rect.colliderect(obs):
-            return True
-    return False
-
-def main():
-    global player_y, player_vel, on_ground, obstacles
-
-    run = True
-    score = 0
-
-    while run:
-        clock.tick(60)  # Limit the frame rate to 60 FPS
-
-        # Handle events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and on_ground:
-                # Jump when space bar is pressed
-                player_vel = jump_strength
-                on_ground = False
-
-        # Update player position
-        player_vel += gravity  # Apply gravity
-        player_y += player_vel
-
-        if player_y >= HEIGHT - player_height - 50:
-            player_y = HEIGHT - player_height - 50
-            on_ground = True
-            player_vel = 0  # Reset vertical velocity
-
-        # Move obstacles
-        move_obstacles()
-
-        # Check for collisions
-        if check_collision():
-            run = False
-
-        # Generate obstacles randomly
-        if random.randint(1, 100) <= 2:  # 2% chance to spawn an obstacle every frame
-            create_obstacle()
-
-        # Clear the screen
-        screen.fill(WHITE)
-
-        # Draw the player and obstacles
-        draw_player()
-        draw_obstacles()
-
-        # Display the score
-        score += 1
-        score_text = font.render(f"Score: {score}", True, BLACK)
-        screen.blit(score_text, (10, 10))
-
-        # Update the display
-        pygame.display.update()
-
-    # Game Over
-    game_over_text = font.render(f"Game Over! Score: {score}", True, BLACK)
-    screen.fill(WHITE)
-    screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2))
-    pygame.display.update()
-    pygame.time.wait(2000)
-
-    pygame.quit()
-
-if __name__ == "__main__":
-    main()
+</body>
+</html>
